@@ -23,6 +23,7 @@ interface HeaderProps {
   onToggleEditMode: () => void;
   onOpenAddModal: () => void;
   onOpenBackupModal: () => void;
+  isScrolled?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -36,16 +37,93 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleEditMode,
   onOpenAddModal,
   onOpenBackupModal,
+  isScrolled = false,
 }) => {
   const sessions = getMarketSessions();
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // When scrolled on mobile: render a sleek, minimal 42px bar
+  if (isScrolled) {
+    return (
+      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#090D16]/95 backdrop-blur-md transition-all duration-200">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-11 flex items-center justify-between gap-2">
+          {/* Minimal Brand - Tap to scroll top */}
+          <button
+            onClick={scrollToTop}
+            title="Scroll to top to expand details"
+            className="flex items-center gap-2 text-left cursor-pointer group"
+          >
+            <div className="w-6 h-6 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <TrendingUp className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs sm:text-sm font-bold text-white font-sans group-hover:text-emerald-400 transition-colors">
+              FinPulse <span className="text-emerald-400 font-mono">EUR</span>
+            </span>
+          </button>
+
+          {/* Quick Metrics & Actions Strip */}
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Minimal EUR/USD rate */}
+            <div
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] sm:text-xs font-mono"
+              title="Live EUR/USD rate"
+            >
+              <span className="text-slate-500 hidden xs:inline">EUR/USD:</span>
+              <span className="text-emerald-400 font-semibold tabular-nums">
+                {eurUsdRate ? eurUsdRate.toFixed(4) : '1.0825'}
+              </span>
+            </div>
+
+            {/* Quick Refresh Icon */}
+            <button
+              onClick={onRefresh}
+              disabled={isLoading}
+              title="Refresh Quotes"
+              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-400' : ''}`}
+              />
+            </button>
+
+            {/* Quick Edit Mode Icon */}
+            <button
+              onClick={onToggleEditMode}
+              title={isEditMode ? 'Done Editing' : 'Edit List'}
+              className={`p-1.5 rounded-lg border text-xs font-semibold cursor-pointer ${
+                isEditMode
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Minimal + Add Button */}
+            <button
+              onClick={onOpenAddModal}
+              className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 text-xs font-semibold shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add</span>
+            </button>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // When at top of page: Full Expanded Header showing ALL details!
   return (
-    <header className="border-b border-slate-800/80 bg-[#090D16]/90 backdrop-blur-md sticky top-0 z-40">
-      {/* Primary Brand & Actions Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
-        {/* Brand / Logo Zone */}
+    <header className="border-b border-slate-800/80 bg-[#090D16] transition-all duration-200">
+      {/* 1. Main Brand & Full Actions Bar */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        {/* Brand Zone */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
             <TrendingUp className="w-4 h-4" />
           </div>
           <div>
@@ -68,22 +146,23 @@ export const Header: React.FC<HeaderProps> = ({
           {/* PWA Install Button */}
           <PWAInstallButton />
 
-          {/* Backup / Reset Button */}
+          {/* Backup Button */}
           <button
             onClick={onOpenBackupModal}
-            title="Backup, Export, Import, or Reset Watchlist"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900 hover:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors whitespace-nowrap shrink-0"
+            title="Backup & Sync Watchlist (JSON)"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900 hover:bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Database className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden sm:inline">Backup &amp; Reset</span>
+            <span>Backup</span>
           </button>
 
-          {/* Edit List Toggle Button */}
+          {/* Edit List Button */}
           <button
             onClick={onToggleEditMode}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 border ${
+            title={isEditMode ? 'Finish Editing' : 'Edit & Reorder List'}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 border cursor-pointer ${
               isEditMode
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm'
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs'
                 : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700/80'
             }`}
           >
@@ -94,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* + Add Asset Button */}
           <button
             onClick={onOpenAddModal}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-semibold shadow-sm transition-colors whitespace-nowrap shrink-0"
+            className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-semibold shadow-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Asset</span>
@@ -102,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Financial Status Sub-Bar: Sessions, FX Rate, Refresh controls */}
+      {/* 2. Full Expanded Market Status & Refresh Sub-Bar */}
       <div className="border-t border-slate-800/60 bg-[#0B101E]/60 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-y-2 gap-x-4">
           {/* Market Session Badges */}
@@ -167,7 +246,9 @@ export const Header: React.FC<HeaderProps> = ({
               title="Refresh Quotes"
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 transition-colors cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-400' : ''}`} />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-400' : ''}`}
+              />
               <span className="text-[11px] font-medium hidden sm:inline">
                 {isLoading ? 'Fetching...' : 'Refresh'}
               </span>

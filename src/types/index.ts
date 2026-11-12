@@ -10,6 +10,12 @@ export interface WatchlistItem {
   customOrder?: number;
 }
 
+export interface SparklinePoint {
+  price: number;
+  time?: number;
+  label?: string; // e.g. "14:30" for 1D or "Wed" for 7D
+}
+
 export interface NormalizedQuote {
   symbol: string;
   originalCurrency: string;
@@ -18,20 +24,27 @@ export interface NormalizedQuote {
 
   // Price & metrics all normalized to EUR (€)
   priceEur: number;
+
+  // 1-Day change
   changeEur: number;
   changePercent: number;
+
+  // 7-Day change
+  change7dEur: number;
+  change7dPercent: number;
+
   previousCloseEur: number;
   dayLowEur: number;
   dayHighEur: number;
   fiftyTwoWeekLowEur: number;
   fiftyTwoWeekHighEur: number;
 
-  // Multi-timeframe sparkline close prices in EUR (1D intraday and 7D daily closes)
+  // Multi-timeframe sparkline points with short hover labels
   sparklines: {
-    '1D': number[];
-    '7D': number[];
+    '1D': SparklinePoint[];
+    '7D': SparklinePoint[];
   };
-  sparkline: number[]; // Backwards-compatible alias to 7D sparkline
+  sparkline: number[]; // Backwards-compatible raw number array
 
   // Meta
   exchangeName?: string;

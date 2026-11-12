@@ -9,7 +9,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { fetchIntradayTicks } from '../services/quotesService';
-import { AssetCategory, GraphTimeframe, NormalizedQuote, WatchlistItem } from '../types';
+import { AssetCategory, GraphTimeframe, NormalizedQuote, SparklinePoint, WatchlistItem } from '../types';
 import { formatEur, formatPercent, getHeatmapStyle } from '../utils/formatters';
 import { RangeBar } from './RangeBar';
 import { Sparkline } from './Sparkline';
@@ -50,9 +50,9 @@ export const AssetCard: React.FC<AssetCardProps> = ({
   const [editName, setEditName] = useState(item.name);
   const [editCat, setEditCat] = useState<AssetCategory>(item.category);
 
-  // Timeframe for the graph: 1D, 7D, 1M
+  // Timeframe for the graph: 1D (Intraday) or 7D (Weekly Trend)
   const [cardTimeframe, setCardTimeframe] = useState<GraphTimeframe>(globalTimeframe);
-  const [custom1DTicks, setCustom1DTicks] = useState<number[] | null>(null);
+  const [custom1DTicks, setCustom1DTicks] = useState<SparklinePoint[] | null>(null);
 
   // Sync with global timeframe when it changes
   useEffect(() => {
@@ -70,8 +70,6 @@ export const AssetCard: React.FC<AssetCardProps> = ({
     }
   };
 
-  const changePercent = quote?.changePercent ?? 0;
-  const changeEur = quote?.changeEur ?? 0;
   const priceEur = quote?.priceEur ?? 0;
   const prevClose = quote?.previousCloseEur ?? priceEur;
   const dayLow = quote?.dayLowEur ?? priceEur;
@@ -79,7 +77,18 @@ export const AssetCard: React.FC<AssetCardProps> = ({
   const fiftyTwoLow = quote?.fiftyTwoWeekLowEur ?? dayLow;
   const fiftyTwoHigh = quote?.fiftyTwoWeekHighEur ?? dayHigh;
 
-  const heatmap = getHeatmapStyle(changePercent);
+  // Dynamically calculate active change % and euro change based on the selected timeframe
+  const is1D = cardTimeframe === '1D';
+  const activeChangePercent = is1D
+    ? quote?.changePercent ?? 0
+    : quote?.change7dPercent ?? quote?.changePercent ?? 0;
+  const activeChangeEur = is1D
+    ? quote?.changeEur ?? 0
+    : quote?.change7dEur ?? quote?.changeEur ?? 0;
+  const periodLabel = is1D ? 'today' : 'past 7d';
+
+  // Heatmap styling reacts directly to the selected timeframe's percentage!
+  const heatmap = getHeatmapStyle(activeChangePercent);
 
   // Pick sparkline data based on active timeframe
   const sparklineData = useMemo(() => {
@@ -223,37 +232,40 @@ export const AssetCard: React.FC<AssetCardProps> = ({
         </div>
       )}
 
-      {/* 2. Primary Price Row */}
+      {/* 2. Primary Price Row - Dynamically reflects selected period (1D or 7D) */}
       <div className="my-3 flex items-baseline justify-between gap-2">
         <div>
           <div className="text-xl sm:text-2xl font-bold font-mono tracking-tight text-white tabular-nums">
             {formatEur(priceEur)}
           </div>
           <div className="text-xs font-mono tabular-nums text-slate-400 flex items-center gap-1 mt-0.5">
-            <span className={changeEur >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-              {formatEur(changeEur, { showSign: true })}
+            <span className={activeChangeEur >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+              {formatEur(activeChangeEur, { showSign: true })}
             </span>
-            <span className="text-slate-500 text-[10px]">today</span>
+            <span className="text-slate-500 text-[10px]">{periodLabel}</span>
           </div>
         </div>
 
-        {/* Daily Change Badge */}
+        {/* Change Badge for the selected timeframe */}
         <div
-          className={`flex items-center gap-0.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono tabular-nums shrink-0 ${heatmap.badgeClasses}`}
+          className={`flex items-center gap-0.5 px-2.5 py-1 rounded-md text-xs font-bold font-mono tabular-nums shrink-0 transition-colors ${heatmap.badgeClasses}`}
+          title={`${is1D ? '1-Day' : '7-Day'} price change`}
         >
-          {changePercent > 0 ? (
+          {activeChangePercent > 0 ? (
             <ArrowUpRight className="w-3.5 h-3.5 stroke-[2.5]" />
-          ) : changePercent < 0 ? (
+          ) : activeChangePercent < 0 ? (
             <ArrowDownRight className="w-3.5 h-3.5 stroke-[2.5]" />
           ) : null}
-          <span>{formatPercent(changePercent)}</span>
+          <span>{formatPercent(activeChangePercent)}</span>
         </div>
       </div>
 
       {/* 3. Graph with 1D / 7D Timeframe Selector */}
       <div className="my-1.5">
         <div className="flex items-center justify-between text-[11px] mb-1">
-          <span className="text-[10px] text-slate-500 font-medium">Chart</span>
+          <span className="text-[10px] text-slate-500 font-medium">
+            {is1D ? 'Intraday' : '7D Trend'}
+          </span>
           <div className="flex items-center gap-0.5 bg-slate-950/80 p-0.5 rounded border border-slate-800">
             {(['1D', '7D'] as const).map((tf) => (
               <button

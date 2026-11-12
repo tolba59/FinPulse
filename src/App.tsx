@@ -11,6 +11,7 @@ import { FilterBar } from './components/FilterBar';
 import { Header } from './components/Header';
 import { STARTER_WATCHLIST } from './constants/starterWatchlist';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { useScrollHeader } from './hooks/useScrollHeader';
 import { fetchAllQuotes, getCachedQuotes } from './services/quotesService';
 import {
   AssetCategory,
@@ -27,6 +28,7 @@ const STORAGE_KEY_TIMEFRAME = 'finpulse_timeframe';
 
 export default function App() {
   const isOnline = useOnlineStatus();
+  const isScrolled = useScrollHeader(50);
 
   // 1. Watchlist state
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => {
@@ -150,14 +152,12 @@ export default function App() {
         ? 7200 * 1000
         : Infinity;
 
-    // If cache is empty or older than refresh interval, fetch fresh data
     const isCacheStale = !cached.lastUpdated || now - cached.lastUpdated > intervalMs;
 
     if (isCacheStale && isOnline) {
       performFetch();
     }
 
-    // Auto-refresh timer checking cadence
     const intervalTimer = setInterval(() => {
       if (refreshInterval === 'manual' || !isOnline) return;
       const currentNow = Date.now();
@@ -176,7 +176,6 @@ export default function App() {
       if (prev.some((p) => p.symbol === newItem.symbol)) return prev;
       return [newItem, ...prev];
     });
-    // Immediately fetch quote for the new asset
     performFetch([newItem.symbol]);
   };
 
@@ -221,17 +220,27 @@ export default function App() {
       );
     }
 
-    // Sorting
+    // Sorting: respect the active timeframe for Gainers and Losers!
+    const is1D = globalTimeframe === '1D';
+
     if (sortOption === 'gainers') {
       result.sort((a, b) => {
-        const changeA = quotes[a.symbol]?.changePercent ?? -Infinity;
-        const changeB = quotes[b.symbol]?.changePercent ?? -Infinity;
+        const changeA = is1D
+          ? quotes[a.symbol]?.changePercent ?? -Infinity
+          : quotes[a.symbol]?.change7dPercent ?? quotes[a.symbol]?.changePercent ?? -Infinity;
+        const changeB = is1D
+          ? quotes[b.symbol]?.changePercent ?? -Infinity
+          : quotes[b.symbol]?.change7dPercent ?? quotes[b.symbol]?.changePercent ?? -Infinity;
         return changeB - changeA;
       });
     } else if (sortOption === 'losers') {
       result.sort((a, b) => {
-        const changeA = quotes[a.symbol]?.changePercent ?? Infinity;
-        const changeB = quotes[b.symbol]?.changePercent ?? Infinity;
+        const changeA = is1D
+          ? quotes[a.symbol]?.changePercent ?? Infinity
+          : quotes[a.symbol]?.change7dPercent ?? quotes[a.symbol]?.changePercent ?? Infinity;
+        const changeB = is1D
+          ? quotes[b.symbol]?.changePercent ?? Infinity
+          : quotes[b.symbol]?.change7dPercent ?? quotes[b.symbol]?.changePercent ?? Infinity;
         return changeA - changeB;
       });
     } else if (sortOption === 'name-asc') {
@@ -247,7 +256,7 @@ export default function App() {
     }
 
     return result;
-  }, [watchlist, activeCategory, searchFilter, sortOption, quotes]);
+  }, [watchlist, activeCategory, searchFilter, sortOption, quotes, globalTimeframe]);
 
   // Robust Reorder Handler by Item ID: swaps the item with its adjacent neighbor in the visible list
   const handleMoveAssetById = (itemId: string, direction: 'up' | 'down') => {
@@ -305,23 +314,26 @@ export default function App() {
     ];
   }, [watchlist]);
 
-  // 12. Breadth stats (gainers vs losers)
+  // 12. Breadth stats (gainers vs losers) reflecting active period
   const { gainersCount, losersCount } = useMemo(() => {
     let g = 0;
     let l = 0;
+    const is1D = globalTimeframe === '1D';
+
     watchlist.forEach((item) => {
       const q = quotes[item.symbol];
       if (q) {
-        if (q.changePercent > 0.0001) g++;
-        else if (q.changePercent < -0.0001) l++;
+        const val = is1D ? q.changePercent : q.change7dPercent ?? q.changePercent;
+        if (val > 0.0001) g++;
+        else if (val < -0.0001) l++;
       }
     });
     return { gainersCount: g, losersCount: l };
-  }, [watchlist, quotes]);
+  }, [watchlist, quotes, globalTimeframe]);
 
   return (
     <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
-      {/* Top Status Bar & Navigation */}
+      {/* Top Status Bar & Navigation with Auto-Hide on Mobile Scroll */}
       <Header
         eurUsdRate={eurUsdRate}
         lastUpdated={lastUpdated}
@@ -333,11 +345,12 @@ export default function App() {
         onToggleEditMode={handleToggleEditMode}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
+        isScrolled={isScrolled}
       />
 
       {/* Main Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Filter & Sort Bar with Global 1D/7D/1M Timeframe */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        {/* Filter & Sort Bar with Global 1D/7D Timeframe */}
         <FilterBar
           categories={categoryCounts}
           activeCategory={activeCategory}
@@ -354,22 +367,22 @@ export default function App() {
 
         {/* Edit Mode Notice Banner */}
         {isEditMode && (
-          <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-600/50 text-amber-200 text-xs flex items-center justify-between gap-3">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-amber-950/40 border border-amber-600/50 text-amber-200 text-xs flex items-center justify-between gap-3">
             <span>
-              <strong>Edit Mode Active:</strong> Use the <strong>Up</strong> and <strong>Down</strong> buttons on each card to customize the order, or click <strong>Rename</strong> to update display names.
+              <strong>Edit Mode:</strong> Use <strong>Up</strong> / <strong>Down</strong> to reorder, or click <strong>Rename</strong>.
             </span>
             <button
               onClick={() => setIsEditMode(false)}
-              className="px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer"
+              className="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer"
             >
-              Done Editing
+              Done
             </button>
           </div>
         )}
 
         {/* Watchlist Grid */}
         {filteredAndSortedList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {filteredAndSortedList.map((item, index) => {
               const quote = quotes[item.symbol];
               return (
@@ -391,7 +404,7 @@ export default function App() {
           </div>
         ) : (
           /* Empty Search / Filter State */
-          <div className="py-16 text-center rounded-2xl border border-slate-800 bg-slate-900/30 p-8 space-y-3">
+          <div className="py-12 sm:py-16 text-center rounded-2xl border border-slate-800 bg-slate-900/30 p-6 sm:p-8 space-y-3">
             <div className="text-slate-400 text-sm font-medium">
               No assets found matching "{searchFilter || activeCategory}".
             </div>
@@ -443,8 +456,8 @@ export default function App() {
       />
 
       {/* Quiet Footer */}
-      <footer className="mt-auto border-t border-slate-800/60 py-4 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="mt-auto border-t border-slate-800/60 py-3 sm:py-4 text-center text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-2">
           <span>FinPulse EUR · Personal Multi-Asset Financial Watchlist</span>
           <span>Deterministic Data Pipeline · Zero AI Slop</span>
         </div>

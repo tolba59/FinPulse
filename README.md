@@ -1,6 +1,6 @@
 # FinPulse EUR · Multi-Asset Financial Watchlist PWA
 
-A high-performance, dark-mode financial watchlist web application built as an installable **Progressive Web App (PWA)** to track European UCITS ETFs, US stocks, EU equities, and cryptocurrencies—with **all prices and metrics normalized to Euros (€)**.
+A high-performance, dark-mode personal financial watchlist web application built as an installable **Progressive Web App (PWA)** to track European UCITS ETFs, US stocks, EU equities, and cryptocurrencies—with **all prices and key metrics normalized to Euros (€)**.
 
 Built 100% deterministic: fast, lightweight, and data-driven with zero AI overhead or LLM dependencies.
 
@@ -10,37 +10,43 @@ Built 100% deterministic: fast, lightweight, and data-driven with zero AI overhe
 
 - **100% EUR Currency Normalization**:
   - Automatically fetches the live `EURUSD=X` exchange rate.
-  - Automatically converts USD-denominated assets (e.g. NVIDIA, AMD, Alphabet) to EUR, displaying a subtle `USD → EUR` conversion badge.
+  - Converts USD-denominated assets (e.g. NVIDIA, AMD, Alphabet) to EUR in real time, displaying an informative `USD → EUR` badge.
   - Handles sub-unit currencies (e.g. GBp pence) and penny-asset precision.
 - **Progressive Web App (PWA)**:
   - Installable directly to the home screen on Android, Chrome, and iOS Safari.
-  - Launches in standalone fullscreen mode like a native application.
-  - Offline-ready with local caching and offline status indicator.
-  - In-app install banner with guided iOS Safari instructions.
+  - Launches in standalone fullscreen mode like a native mobile app.
+  - Offline-ready with local caching and non-intrusive offline status toast.
+  - In-app install banner with guided iOS Safari home screen instructions.
+- **Adaptive Header with Zero Lost Headroom**:
+  - **Full Details at Top**: View all market sessions, live EUR/USD rate, auto-refresh cadence, last updated timestamp, and action buttons when at the top of the page.
+  - **Minimal 42px Bar on Scroll**: As you scroll down, the header naturally collapses into an ultra-slim 42px minimal bar (`FinPulse EUR` · `EUR/USD` · `+ Add` · `Edit` · `Refresh`), reclaiming virtually 100% of the mobile screen for your watchlist cards.
+  - **Tap to Expand**: Tapping the top brand title at any time smoothly scrolls to the top and immediately restores the full expanded header.
+- **Dual Graph Timeframes (1D & 7D) with Dynamic Period Metrics**:
+  - **1D (Intraday)**: High-resolution intraday curve with clean hourly hover tags (e.g., `€323,69 · 14:30`).
+  - **7D (Weekly Trend)**: 7-day daily close trajectory with short weekday hover tags (e.g., `€323,69 · Wed`).
+  - **Dynamic Period Percentage & Euro Delta**:
+    - Switching between 1D and 7D instantly updates the percentage badge, euro change (`today` vs `past 7d`), and the card's heatmap glow.
+    - Top Gainers / Losers sorting and market breadth stats automatically calculate against the active timeframe.
 - **Interactive Red / Green Heatmap Cards**:
-  - Dynamic card background tint and border glow based on daily percentage change:
+  - Dynamic card background tint and border glow based on selected period performance:
     - Vibrant emerald glow for gains $> +3.0\%$
     - Medium emerald border for $+1.0\%$ to $+3.0\%$
     - Subtle emerald tint for $0.0\%$ to $+1.0\%$
     - Subtle crimson tint for $0.0\%$ to $-1.0\%$
     - Medium crimson border for $-1.0\%$ to $-3.0\%$
     - Vibrant crimson glow for losses $< -3.0\%$
-- **Dual Graph Timeframes (1D & 7D)**:
-  - **1D**: Intraday price movements with hover price tooltips.
-  - **7D**: 7-day daily close trajectory with SVG smooth curves and gradient fills.
-  - Global toggle in the top bar or individual toggle on each asset card.
 - **Market Session Clocks (CET)**:
   - Real-time market status badges calculated in Central European Time:
     - **XETRA** (Open Mon–Fri 09:00–17:30 CET)
     - **US Markets** (Open Mon–Fri 15:30–22:00 CET)
     - **Crypto** (24/7 Non-stop)
-- **Dynamic Watchlist Management**:
+- **Safe & Dynamic Watchlist Management**:
   - **Debounced Search**: Search Yahoo Finance for tickers, company names, UCITS ETFs, or ISIN codes.
   - **Custom Ordering**: Reorder cards using intuitive Up/Down controls in Edit mode.
-  - **Inline Editing**: Rename assets and change category tags on the fly.
-  - **Backup & Sync**: Export your custom list to a `.json` file and import it on another device with zero cloud login required.
+  - **Inline Editing**: Rename assets and customize category tags on the fly.
+  - **Backup & Sync**: Export your custom list to a `.json` file and import it on another device without any risk of accidental resets.
 - **Smart Caching & Refresh Cadence**:
-  - Automatically renders from `localStorage` on launch for instant zero-latency loads.
+  - Renders from `localStorage` on launch for instant zero-latency loads.
   - Configurable auto-refresh interval (`Every 1 hour`, `Every 2 hours`, or `Manual only`).
   - Manual refresh button with loading spinner and CET last-updated timestamp.
 

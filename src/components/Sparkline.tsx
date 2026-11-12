@@ -1,9 +1,9 @@
 import React, { useId, useState } from 'react';
-import { GraphTimeframe } from '../types';
+import { GraphTimeframe, SparklinePoint } from '../types';
 import { formatEur } from '../utils/formatters';
 
 interface SparklineProps {
-  data: number[];
+  data: (number | SparklinePoint)[];
   color: string;
   timeframe?: GraphTimeframe;
   height?: number;
@@ -29,27 +29,45 @@ export const Sparkline: React.FC<SparklineProps> = ({
     );
   }
 
+  // Normalize points: handle both raw numbers and SparklinePoint objects
+  const rawPoints: { val: number; label: string }[] = data
+    .map((item, idx) => {
+      if (typeof item === 'number') {
+        return {
+          val: item,
+          label:
+            timeframe === '1D'
+              ? `${String(9 + Math.floor((idx / data.length) * 8.5)).padStart(2, '0')}:00`
+              : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][idx % 7],
+        };
+      }
+      return {
+        val: item.price,
+        label: item.label || (timeframe === '1D' ? '14:00' : 'Wed'),
+      };
+    })
+    .filter((p) => !isNaN(p.val) && p.val > 0);
+
+  if (rawPoints.length < 2) return null;
+
   const width = 280;
   const paddingX = 4;
   const paddingY = 6;
 
-  const validData = data.filter((v) => !isNaN(v) && v > 0);
-  if (validData.length < 2) return null;
-
-  const min = Math.min(...validData);
-  const max = Math.max(...validData);
+  const min = Math.min(...rawPoints.map((p) => p.val));
+  const max = Math.max(...rawPoints.map((p) => p.val));
   const range = max - min || 1;
 
   const usableWidth = width - paddingX * 2;
   const usableHeight = height - paddingY * 2;
 
-  const points = validData.map((val, idx) => {
-    const x = paddingX + (idx / (validData.length - 1)) * usableWidth;
-    const y = paddingY + usableHeight - ((val - min) / range) * usableHeight;
-    return { x, y, val };
+  const points = rawPoints.map((pt, idx) => {
+    const x = paddingX + (idx / (rawPoints.length - 1)) * usableWidth;
+    const y = paddingY + usableHeight - ((pt.val - min) / range) * usableHeight;
+    return { x, y, val: pt.val, label: pt.label };
   });
 
-  // Build SVG path
+  // Build smooth SVG curve
   let pathD = `M ${points[0].x} ${points[0].y}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
@@ -62,6 +80,13 @@ export const Sparkline: React.FC<SparklineProps> = ({
 
   const lastPoint = points[points.length - 1];
   const activePoint = hoveredIdx !== null ? points[hoveredIdx] : null;
+
+  // Clamped horizontal position for hover tooltip to prevent overflow
+  let tooltipLeftPercent = 50;
+  if (activePoint) {
+    const rawPercent = (activePoint.x / width) * 100;
+    tooltipLeftPercent = Math.max(16, Math.min(84, rawPercent));
+  }
 
   return (
     <div className="relative w-full overflow-hidden select-none" style={{ height }}>
@@ -125,16 +150,17 @@ export const Sparkline: React.FC<SparklineProps> = ({
         )}
       </svg>
 
-      {/* Hover price tag tooltip */}
+      {/* Hover price tag tooltip with short hour (1D) or short day (7D) */}
       {activePoint && (
         <div
-          className="absolute top-0 transform -translate-x-1/2 -translate-y-1 pointer-events-none z-10 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-900 border border-slate-700 text-slate-200 shadow-md whitespace-nowrap"
+          className="absolute top-0 transform -translate-x-1/2 -translate-y-1 pointer-events-none z-10 px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-900 border border-slate-700 text-slate-100 shadow-md whitespace-nowrap flex items-center gap-1.5"
           style={{
-            left: `${(activePoint.x / width) * 100}%`,
+            left: `${tooltipLeftPercent}%`,
           }}
         >
-          {formatEur(activePoint.val)}
-          <span className="text-slate-500 ml-1 text-[9px]">{timeframe}</span>
+          <span className="font-semibold text-white">{formatEur(activePoint.val)}</span>
+          <span className="text-slate-500 font-sans">·</span>
+          <span className="text-emerald-400 font-medium">{activePoint.label}</span>
         </div>
       )}
     </div>
