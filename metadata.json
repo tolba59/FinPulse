@@ -1,0 +1,8 @@
+{
+  "name": "FinPulse EUR - Multi-Asset Watchlist",
+  "description": "Deterministic dark-mode personal financial watchlist PWA tracking US stocks, UCITS ETFs, and cryptocurrencies normalized to EUR.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
