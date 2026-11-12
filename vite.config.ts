@@ -124,6 +124,73 @@ function devApiProxyPlugin(): Plugin {
           }
         }
 
+        // 3. /api/sync endpoint (Secret Sync Code for multi-device sync)
+        if (req.url.startsWith('/api/sync')) {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+          res.setHeader('Content-Type', 'application/json');
+
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 200;
+            res.end('');
+            return;
+          }
+
+          const devSyncStore = (globalThis as unknown as { __devSyncStore?: Map<string, { watchlist: unknown[]; updatedAt: number }> }).__devSyncStore ||
+            ((globalThis as unknown as { __devSyncStore: Map<string, { watchlist: unknown[]; updatedAt: number }> }).__devSyncStore = new Map());
+
+          if (req.method === 'GET') {
+            const urlObj = new URL(req.url, 'http://localhost:3000');
+            const code = (urlObj.searchParams.get('code') || '').trim().toUpperCase();
+            if (!code) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Missing sync code' }));
+              return;
+            }
+
+            const record = devSyncStore.get(code);
+            if (record) {
+              res.statusCode = 200;
+              res.end(JSON.stringify({ success: true, code, watchlist: record.watchlist, updatedAt: record.updatedAt }));
+              return;
+            }
+
+            res.statusCode = 404;
+            res.end(JSON.stringify({ error: `Sync code "${code}" not found. Verify the code on your other device.` }));
+            return;
+          }
+
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', (chunk) => {
+              body += chunk;
+            });
+            req.on('end', () => {
+              try {
+                const payload = JSON.parse(body || '{}');
+                const code = String(payload.code || '').trim().toUpperCase();
+                const watchlist = payload.watchlist;
+                if (!code || !Array.isArray(watchlist)) {
+                  res.statusCode = 400;
+                  res.end(JSON.stringify({ error: 'code and watchlist array are required' }));
+                  return;
+                }
+
+                const record = { watchlist, updatedAt: Date.now() };
+                devSyncStore.set(code, record);
+
+                res.statusCode = 200;
+                res.end(JSON.stringify({ success: true, code, updatedAt: record.updatedAt }));
+              } catch {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+              }
+            });
+            return;
+          }
+        }
+
         next();
       });
     },

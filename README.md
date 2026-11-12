@@ -17,10 +17,9 @@ Built 100% deterministic: fast, lightweight, and data-driven with zero AI overhe
   - Launches in standalone fullscreen mode like a native mobile app.
   - Offline-ready with local caching and non-intrusive offline status toast.
   - In-app install banner with guided iOS Safari home screen instructions.
-- **Adaptive Header with Zero Lost Headroom**:
-  - **Full Details at Top**: View all market sessions, live EUR/USD rate, auto-refresh cadence, last updated timestamp, and action buttons when at the top of the page.
-  - **Minimal 42px Bar on Scroll**: As you scroll down, the header naturally collapses into an ultra-slim 42px minimal bar (`FinPulse EUR` · `EUR/USD` · `+ Add` · `Edit` · `Refresh`), reclaiming virtually 100% of the mobile screen for your watchlist cards.
-  - **Tap to Expand**: Tapping the top brand title at any time smoothly scrolls to the top and immediately restores the full expanded header.
+- **Clean, Non-Fixed Header**:
+  - **Full Details at Top**: View all market sessions, live EUR/USD rate, auto-refresh cadence, last updated timestamp, and action buttons at the top of the page.
+  - **Smooth Natural Scrolling**: The header scrolls smoothly out of view with the page on mobile and desktop with zero layout shift or sticky headroom loss.
 - **Dual Graph Timeframes (1D & 7D) with Dynamic Period Metrics**:
   - **1D (Intraday)**: High-resolution intraday curve with clean hourly hover tags (e.g., `€323,69 · 14:30`).
   - **7D (Weekly Trend)**: 7-day daily close trajectory with short weekday hover tags (e.g., `€323,69 · Wed`).
@@ -44,7 +43,15 @@ Built 100% deterministic: fast, lightweight, and data-driven with zero AI overhe
   - **Debounced Search**: Search Yahoo Finance for tickers, company names, UCITS ETFs, or ISIN codes.
   - **Custom Ordering**: Reorder cards using intuitive Up/Down controls in Edit mode.
   - **Inline Editing**: Rename assets and customize category tags on the fly.
-  - **Backup & Sync**: Export your custom list to a `.json` file and import it on another device without any risk of accidental resets.
+  - **Zero-Login Multi-Device Cloud Sync (Cloud Sync Code)**:
+    - Sync your portfolio across all your devices (phone, desktop, tablet) without creating an account or signing in with Google.
+    - **How to use**:
+      1. On your **first device**, click **Sync** in the header and tap **Generate Sync Code** to create a private code (e.g., `EUR-8492`) and save your watchlist to the cloud.
+      2. On your **other devices**, click **Sync**, enter that code under **Linking another device?**, and tap **Connect**.
+      3. Any changes (adding, removing, renaming, or reordering assets) automatically sync in the background and pull on app launch.
+    - Includes manual **Push Local to Cloud**, **Pull from Cloud**, and **Unlink** controls, backed by Netlify Blobs with a local dev proxy fallback.
+  - **Offline JSON Backup**:
+    - Export your full configuration to a portable `.json` backup file or restore it manually anytime.
 - **Smart Caching & Refresh Cadence**:
   - Renders from `localStorage` on launch for instant zero-latency loads.
   - Configurable auto-refresh interval (`Every 1 hour`, `Every 2 hours`, or `Manual only`).
@@ -70,7 +77,7 @@ Built 100% deterministic: fast, lightweight, and data-driven with zero AI overhe
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Typography**: Plus Jakarta Sans & JetBrains Mono (tabular figures)
-- **Backend / Serverless**: Netlify Functions (`netlify/functions/quotes.ts` and `search.ts`) with local Vite dev proxy and public CORS fallback
+- **Backend / Serverless**: Netlify Functions (`netlify/functions/quotes.ts`, `search.ts`, and `sync.ts` via `@netlify/blobs`) with local Vite dev proxy and public CORS fallback
 
 ---
 
@@ -117,7 +124,7 @@ The repository includes a ready-to-use `netlify.toml` and serverless functions i
    - **Build Command**: `npm run build`
    - **Publish Directory**: `dist`
    - **Functions Directory**: `netlify/functions`
-4. Deploy! Your API endpoints at `/api/quotes` and `/api/search` will be handled by the serverless functions with zero additional configuration.
+4. Deploy! Your API endpoints at `/api/quotes`, `/api/search`, and `/api/sync` (using Netlify Blobs) will be handled automatically with zero additional configuration.
 
 ---
 
@@ -125,6 +132,7 @@ The repository includes a ready-to-use `netlify.toml` and serverless functions i
 
 - **Zero Secrets**: This application does **not** use or require any paid API keys, tokens, or private secrets.
 - **Zero Telemetry**: No third-party analytics trackers, cookies, or tracking scripts are included.
+- **Private Sync Codes**: Cloud Sync only stores your ticker symbols, display names, and categories (no personal info or financial balances). Keep your generated `EUR-XXXX` code private between your own devices.
 - **Safe for Public Repositories**: You can safely publish this repository as **Public** on GitHub without exposing any credentials or private information.
 
 ---

@@ -11,8 +11,12 @@ import { FilterBar } from './components/FilterBar';
 import { Header } from './components/Header';
 import { STARTER_WATCHLIST } from './constants/starterWatchlist';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
-import { useScrollHeader } from './hooks/useScrollHeader';
 import { fetchAllQuotes, getCachedQuotes } from './services/quotesService';
+import {
+  getSavedSyncCode,
+  pullWatchlistFromCloud,
+  pushWatchlistToCloud,
+} from './services/syncService';
 import {
   AssetCategory,
   GraphTimeframe,
@@ -28,7 +32,6 @@ const STORAGE_KEY_TIMEFRAME = 'finpulse_timeframe';
 
 export default function App() {
   const isOnline = useOnlineStatus();
-  const isScrolled = useScrollHeader(50);
 
   // 1. Watchlist state
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>(() => {
@@ -54,6 +57,20 @@ export default function App() {
       console.error('Failed to persist watchlist:', e);
     }
   }, [watchlist]);
+
+  // Sync Code (Option 3: Multi-device zero-login cloud sync)
+  const [syncCode, setSyncCode] = useState<string | null>(() => getSavedSyncCode());
+
+  // Automatic Background Push when watchlist changes and syncCode is active
+  useEffect(() => {
+    if (!syncCode || !isOnline) return;
+    const timer = setTimeout(() => {
+      pushWatchlistToCloud(syncCode, watchlist).catch((err) => {
+        console.warn('Background sync push failed:', err);
+      });
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [watchlist, syncCode, isOnline]);
 
   // 2. Quotes cache state
   const [quotes, setQuotes] = useState<Record<string, NormalizedQuote>>(() => {
@@ -169,6 +186,26 @@ export default function App() {
 
     return () => clearInterval(intervalTimer);
   }, [refreshInterval, isOnline, performFetch]);
+
+  // Initial background cloud sync pull if device has a syncCode linked
+  useEffect(() => {
+    if (!syncCode || !isOnline) return;
+    pullWatchlistFromCloud(syncCode)
+      .then((res) => {
+        if (res.success && res.watchlist && res.watchlist.length > 0) {
+          const currentSymbols = watchlist.map((i) => i.symbol).join(',');
+          const cloudSymbols = res.watchlist.map((i) => i.symbol).join(',');
+          if (currentSymbols !== cloudSymbols) {
+            setWatchlist(res.watchlist);
+            performFetch(res.watchlist.map((i) => i.symbol));
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Initial cloud sync check failed:', err);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncCode, isOnline]);
 
   // 9. Watchlist actions
   const handleAddAsset = (newItem: WatchlistItem) => {
@@ -333,19 +370,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-emerald-500/20 selection:text-emerald-300">
-      {/* Top Status Bar & Navigation with Auto-Hide on Mobile Scroll */}
+      {/* Top Status Bar & Navigation */}
       <Header
         eurUsdRate={eurUsdRate}
         lastUpdated={lastUpdated}
         isLoading={isLoading}
         refreshInterval={refreshInterval}
         isEditMode={isEditMode}
+        syncCode={syncCode}
         onRefresh={() => performFetch()}
         onSetRefreshInterval={handleSetRefreshInterval}
         onToggleEditMode={handleToggleEditMode}
         onOpenAddModal={() => setIsAddModalOpen(true)}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
-        isScrolled={isScrolled}
       />
 
       {/* Main Viewport */}
@@ -453,6 +490,8 @@ export default function App() {
         onClose={() => setIsBackupModalOpen(false)}
         watchlist={watchlist}
         onImport={handleImportWatchlist}
+        syncCode={syncCode}
+        onSyncCodeChange={setSyncCode}
       />
 
       {/* Quiet Footer */}
